@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('checkout SCM') {
+            steps {
+                sh "rm -rf *"
+                sh "git clone https://github.com/yanichoupinou/projet-Devops.git"
+            }
+        }
+        
+
+        stage('Update apt') {
+            steps {
+                sh '''
+                    sudo apt-get update
+                '''
+            }
+        }
+
+        stage('Install prerequisites') {
+            steps {
+                sh '''
+                    sudo apt-get install -y ca-certificates curl
+                '''
+            }
+        }
+
+        stage('Setup Docker GPG Key') {
+            steps {
+                sh '''
+                    sudo install -m 0755 -d /etc/apt/keyrings
+                    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+                    sudo chmod a+r /etc/apt/keyrings/docker.asc
+                '''
+            }
+        }
+
+        stage('Add Docker repository') {
+            steps {
+                sh '''
+                    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+                    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+                    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                    sudo apt-get update
+                '''
+            }
+        }
+
+        stage('Install Docker') {
+            steps {
+                sh '''
+                    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+                '''
+            }
+        }
+        
+        stage('déploiement Docker') {
+            steps {
+            sh 'docker rm -f $(docker ps -qa) || true'
+            //sh "docker stop my-nginx"
+            //sh "docker rm my-nginx"
+            sh "docker run -d --name myapp --hostname myapp -p 8088:80 v1.0:myapache-image"
+            sh 'docker exec -i myapp bash -c ifconfig | grep broadcast'
+            sh 'docker exec -i myapp bash -c "ls /var/www/html/"'
+        }
+    }
+        
+    }
+}
